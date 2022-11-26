@@ -1,7 +1,4 @@
 ## Networking Practice
-### Network Security
-#### Assignment 1 - [link](https://drive.google.com/file/d/1QtHWcWm_dAkmzgp97AHHrwtikY6n2QgW/view?usp=sharing)
-### AdHoc Network
 
 **Virtual Environment setup**
 
@@ -29,3 +26,9 @@
 
 - Executable example 
     - `sh {project}/exec.sh` - execute shell script
+
+- Packages used
+    - `pip install pycryptodome` - Pycryptodome
+
+- Useful links
+    - [awesome python libraries for cryptography](https://www.alixaprodev.com/2021/09/awesome-python-libraries-for-Cryptography.html)
