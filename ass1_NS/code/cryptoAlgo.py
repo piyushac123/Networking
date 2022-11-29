@@ -1,4 +1,4 @@
-import argparse, os, base64
+import argparse, os, base64, time
 from Crypto import Random
 from Crypto.Cipher import DES, DES3, AES
 
@@ -12,16 +12,24 @@ def generateIV(block_size):
 def encryptData(cipher, iv, indata):
     # Convert string to bytes
     plaintext = indata.encode("utf-8")
+    # get the start time
+    st = time.time()
     # To binary data
     ciphertext = base64.b64encode(iv + cipher.encrypt(plaintext))
-    return ciphertext
+    # get the end time
+    et = time.time()
+    return ciphertext, (et - st)
 
 
 def decryptData(cipher, block_size, indata):
+    # get the start time
+    st = time.time()
     plaintext = cipher.decrypt(indata[block_size:])
+    # get the end time
+    et = time.time()
     # Convert bytes to string
     result = plaintext.decode("utf-8")
-    return result
+    return result, (et - st)
 
 
 def getCipher(oper, algo, mode, passphrase, indata):
@@ -117,11 +125,29 @@ def main(oper, algo, mode, keysize, infile, outpath):
 
     # Encrypt or Decrypt
     if oper == "enc":
-        outdata = (encryptData(cipher, iv, indata)).decode("utf-8")
+        outdata, exec_time = encryptData(cipher, iv, indata)
+        outdata = (outdata).decode("utf-8")
     elif oper == "dec":
-        outdata = decryptData(cipher, block_size, indata)
+        outdata, exec_time = decryptData(cipher, block_size, indata)
 
     input_file = infile[(infile.find("/", infile.find("/") + 1) + 1) :]
+
+    file = open("records.txt", "a")
+    file.write(
+        oper
+        + "_"
+        + algo
+        + "_"
+        + mode
+        + "_"
+        + keysize
+        + "_"
+        + input_file
+        + "\t"
+        + str(exec_time)
+        + "\n"
+    )
+    file.close()
 
     # Creating a file
     # Put data in output file - can use file name as oper_algo_mode_keysize_infile

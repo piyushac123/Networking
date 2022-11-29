@@ -25,7 +25,7 @@
     - `black {source_file_or_directory}` - format one or many files in-place
 
 - Executable example 
-    - `sh {project}/exec.sh` - execute shell script
+    - `sh {project}/exec.sh -c {choice}` - execute shell script
 
 - Packages used
     - `pip install pycryptodome` - Pycryptodome
