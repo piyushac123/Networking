@@ -14,3 +14,6 @@
     6. outpath - output file path
 
 - Python Cryptographic Package - [PyCryptodome](https://www.pycryptodome.org/src/introduction)
+
+- Notes
+    - Keep consecutive 8 bytes used in passphrase for 3DES different
