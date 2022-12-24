@@ -20,6 +20,6 @@ case $choice in
         ;;
     # receiver execution
     3)
-        python code/client.py -n aakash -m R -i 'inputfile.txt' -d 127.0.0.1 -q 23456 -s 'outenc.txt' -o 'outfile.txt' -a 127.0.0.1 -p 12345
+        python code/client.py -n aakash -m R -i 'input.txt' -d 127.0.0.1 -q 23456 -s 'output_enc.txt' -o 'output_dec.txt' -a 127.0.0.1 -p 12345
         ;;
 esac
