@@ -26,8 +26,8 @@
     - i : requested input file name
     - d : Sender's IP
     - q : Sender's Port
-    - s : store encrypted content received
-    - o : store decrypted content received
+    - s : file to store encrypted content received
+    - o : file to store decrypted content received
     - a : CA's IP
     - p : CA's Port
 

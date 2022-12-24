@@ -246,42 +246,42 @@ if __name__ == "__main__":
     if not args.oper:
         parser.print_help()
         print(
-            "\nOperations not found: %s\nPlease compile the target P4 program first."
+            "\nOperations not found: %s\n"
             % args.oper
         )
         parser.exit(1)
     if not args.algo:
         parser.print_help()
         print(
-            "\nAlgorithm not found: %s\nPlease compile the target P4 program first."
+            "\nAlgorithm not found: %s\n"
             % args.algo
         )
         parser.exit(1)
     if not args.mode:
         parser.print_help()
         print(
-            "\nMode not found: %s\nPlease compile the target P4 program first."
+            "\nMode not found: %s\n"
             % args.mode
         )
         parser.exit(1)
     if not args.keysize:
         parser.print_help()
         print(
-            "\nKey size not found: %s\nPlease compile the target P4 program first."
+            "\nKey size not found: %s\n"
             % args.keysize
         )
         parser.exit(1)
     if not os.path.exists(args.infile):
         parser.print_help()
         print(
-            "\nInput file not found: %s\nPlease compile the target P4 program first."
+            "\nInput file not found: %s\n"
             % args.infile
         )
         parser.exit(1)
     if not args.outpath:
         parser.print_help()
         print(
-            "\nOutput file path not found: %s\nPlease compile the target P4 program first."
+            "\nOutput file path not found: %s\n"
             % args.outpath
         )
         parser.exit(1)
