@@ -1,14 +1,16 @@
 import argparse
+from importlib.machinery import SourceFileLoader
+
+# imports the module from the given path
+S = SourceFileLoader("sender", "code/helper/sender.py").load_module()
+K = SourceFileLoader("keyGen", "code/helper/keyGen.py").load_module()
 
 # MAIN FUNCTION
 def main(caport, recordFile):
     print("\nEntered\n")
-    print(
-        "Args: \ncaport: "
-        + caport
-        + " \nrecordFile: "
-        + recordFile
-    )
+    print("Args: \ncaport: " + caport + " \nrecordFile: " + recordFile)
+    K.generateRSAKey("CA")
+
 
 # Starting position
 # PKI Certificate Authority
@@ -18,9 +20,7 @@ if __name__ == "__main__":
     1. p - CA listening port
     2. o - CA activity records
     """
-    parser = argparse.ArgumentParser(
-        description="PKI Certificate Authority"
-    )
+    parser = argparse.ArgumentParser(description="PKI Certificate Authority")
 
     # Argument extraction
     parser.add_argument(
@@ -44,17 +44,11 @@ if __name__ == "__main__":
 
     if not args.p:
         parser.print_help()
-        print(
-            "\CA port not found: %s\n"
-            % args.p
-        )
+        print("\CA port not found: %s\n" % args.p)
         parser.exit(1)
     if not args.o:
         parser.print_help()
-        print(
-            "\nCA record file name not found: %s\n"
-            % args.o
-        )
+        print("\nCA record file name not found: %s\n" % args.o)
         parser.exit(1)
 
     # Pass argument into main function
