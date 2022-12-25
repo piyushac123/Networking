@@ -1,24 +1,31 @@
 import argparse, json
-import sender, receiver
 
-def certificateAuthorization():
-    print("certificateAuthorization")
+# https://www.geeksforgeeks.org/how-to-import-a-python-module-given-the-full-path/
+from importlib.machinery import SourceFileLoader
 
-def clientToClientCommunication():
-    print("clientToClientCommunication")
+# imports the module from the given path
+R = SourceFileLoader("receiver", "code/helper/receiver.py").load_module()
+S = SourceFileLoader("sender", "code/helper/sender.py").load_module()
+K = SourceFileLoader("keyGen", "code/helper/keyGen.py").load_module()
+
+# def certificateAuthorization():
+#     print("certificateAuthorization")
+
+
+# def clientToClientCommunication():
+#     print("clientToClientCommunication")
+
 
 # MAIN FUNCTION
 def main(args):
     print("\nEntered\n")
     print("Args: ")
     for val in args.keys():
-        print(val+": "+args[val])
-    if args["m"] == 'S':
-        sender.welcome()
-    else:
-        receiver.welcome()
-    certificateAuthorization()
-    clientToClientCommunication()
+        print(val + ": " + args[val])
+    K.generateRSAKey(args["n"])
+    # certificateAuthorization()
+    # clientToClientCommunication()
+
 
 # Starting position
 # Client-side implementation
@@ -35,9 +42,7 @@ if __name__ == "__main__":
     - a : CA's IP
     - p : CA's Port
     """
-    parser = argparse.ArgumentParser(
-        description="Client-side implementation"
-    )
+    parser = argparse.ArgumentParser(description="Client-side implementation")
 
     # Argument extraction
     parser.add_argument(
@@ -117,67 +122,40 @@ if __name__ == "__main__":
 
     if not args.n:
         parser.print_help()
-        print(
-            "\Client name not found: %s\n"
-            % args.n
-        )
+        print("\Client name not found: %s\n" % args.n)
         parser.exit(1)
     if not args.m:
         parser.print_help()
-        print(
-            "\nClient choice not found: %s\n"
-            % args.m
-        )
+        print("\nClient choice not found: %s\n" % args.m)
         parser.exit(1)
     if not args.a:
         parser.print_help()
-        print(
-            "\CA's IP not found: %s\n"
-            % args.a
-        )
+        print("\CA's IP not found: %s\n" % args.a)
         parser.exit(1)
     if not args.p:
         parser.print_help()
-        print(
-            "\nCA's port not found: %s\n"
-            % args.p
-        )
+        print("\nCA's port not found: %s\n" % args.p)
         parser.exit(1)
     if not args.q:
         parser.print_help()
-        print(
-            "\Sender's port not found: %s\n"
-            % args.q
-        )
+        print("\Sender's port not found: %s\n" % args.q)
         parser.exit(1)
-    if args.m == 'R':
+    if args.m == "R":
         if not args.i:
             parser.print_help()
-            print(
-                "\nInput file name name not found: %s\n"
-                % args.i
-            )
+            print("\nInput file name name not found: %s\n" % args.i)
             parser.exit(1)
         if not args.d:
             parser.print_help()
-            print(
-                "\Sender's IP not found: %s\n"
-                % args.d
-            )
+            print("\Sender's IP not found: %s\n" % args.d)
             parser.exit(1)
         if not args.s:
             parser.print_help()
-            print(
-                "\nReceived content encrypted file name not found: %s\n"
-                % args.s
-            )
+            print("\nReceived content encrypted file name not found: %s\n" % args.s)
             parser.exit(1)
         if not args.o:
             parser.print_help()
-            print(
-                "\Received content decrypted file name not found: %s\n"
-                % args.o
-            )
+            print("\Received content decrypted file name not found: %s\n" % args.o)
             parser.exit(1)
 
     # Pass argument into main function
