@@ -6,8 +6,11 @@ import socket, time
 def Tcp_server_wait(numofclientwait, port):
     global s2
     s2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    print("Socket successfully created")
     s2.bind(("", port))
+    print("socket binded to %s" % (port))
     s2.listen(numofclientwait)
+    print("socket is listening")
 
 
 def Tcp_server_next():
@@ -21,7 +24,17 @@ def Tcp_Write(D):
 
 
 def Tcp_Read():
-    return s.recv(1024).decode()
+    result = ""
+    while True:
+        cnt = 0
+        while (tmp := s.recv(1).decode()) and (tmp == "*"):
+            cnt += 1
+            result += tmp
+        if cnt == 5:
+            result = result[:-5]
+            break
+        result += tmp
+    return result
 
 
 def Tcp_Close():
@@ -29,13 +42,11 @@ def Tcp_Close():
     return
 
 
-def handleSender():
-    Tcp_server_wait(5, 12345)
+def handleSender(port):
+    Tcp_server_wait(5, port)
     Tcp_server_next()
     print(Tcp_Read())
-    time.sleep(1)
-    Tcp_Write("hi receiver")
-    print(Tcp_Read())
-    time.sleep(1)
-    Tcp_Write("hi receiver again")
     Tcp_Close()
+
+
+# handleSender()

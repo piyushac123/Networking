@@ -1,4 +1,6 @@
 import argparse, json
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
 
 # https://www.geeksforgeeks.org/how-to-import-a-python-module-given-the-full-path/
 from importlib.machinery import SourceFileLoader
@@ -8,8 +10,28 @@ R = SourceFileLoader("receiver", "code/helper/receiver.py").load_module()
 S = SourceFileLoader("sender", "code/helper/sender.py").load_module()
 K = SourceFileLoader("keyGen", "code/helper/keyGen.py").load_module()
 
-# def certificateAuthorization():
-#     print("certificateAuthorization")
+
+def prepareReqCert(name):
+    req = "| 301 |\n"
+
+    file_out = open("keys/" + name + "/public.pem", "r")
+    req += file_out.read() + "\n"
+    file_out.close()
+
+    public_key = RSA.import_key(open("keys/CA/public.pem").read())
+    # Encrypt with the public RSA key
+    cipher_rsa = PKCS1_OAEP.new(public_key)
+    enc_name = cipher_rsa.encrypt(name.encode("utf-8"))
+
+    req += "| " + str(enc_name) + " |\n"
+    req += "*****"
+
+    # private_key = RSA.import_key(open("keys/CA/private.pem").read())
+    # # Decrypt with the private RSA key
+    # cipher_rsa = PKCS1_OAEP.new(private_key)
+    # dec_name = cipher_rsa.decrypt(enc_name).decode("utf-8")
+
+    return req
 
 
 # def clientToClientCommunication():
@@ -22,8 +44,17 @@ def main(args):
     print("Args: ")
     for val in args.keys():
         print(val + ": " + args[val])
+
+    # Key generation
     K.generateRSAKey(args["n"])
-    # certificateAuthorization()
+
+    # Certificate Authorization
+    req = prepareReqCert(args["n"])
+    R.handleReceiver(args["a"], int(args["p"]), req)
+    # file_out = open("keys/"+args["n"]+"/certificate", "wb")
+    # file_out.write(R.handleReceiver(args["a"], int(args["p"]), req))
+    # file_out.close()
+
     # clientToClientCommunication()
 
 
