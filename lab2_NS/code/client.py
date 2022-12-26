@@ -6,9 +6,8 @@ from Crypto.Cipher import PKCS1_OAEP
 from importlib.machinery import SourceFileLoader
 
 # imports the module from the given path
-R = SourceFileLoader("receiver", "code/helper/receiver.py").load_module()
-S = SourceFileLoader("sender", "code/helper/sender.py").load_module()
-K = SourceFileLoader("keyGen", "code/helper/keyGen.py").load_module()
+conn = SourceFileLoader("socketConn", "code/helper/socketConn.py").load_module()
+keyGen = SourceFileLoader("keyGen", "code/helper/keyGen.py").load_module()
 
 
 def prepareReqCert(name):
@@ -46,11 +45,15 @@ def main(args):
         print(val + ": " + args[val])
 
     # Key generation
-    K.generateRSAKey(args["n"])
+    keyGen.generateRSAKey(args["n"])
 
     # Certificate Authorization
     req = prepareReqCert(args["n"])
-    R.handleReceiver(args["a"], int(args["p"]), req)
+    socket = conn.Tcp_client_connect(args["a"], int(args["p"]))
+    print(req)
+    conn.Tcp_Write(socket, req)
+    conn.Tcp_Close(socket)
+
     # file_out = open("keys/"+args["n"]+"/certificate", "wb")
     # file_out.write(R.handleReceiver(args["a"], int(args["p"]), req))
     # file_out.close()

@@ -3,27 +3,34 @@
 import socket, time
 
 
-def Tcp_server_wait(numofclientwait, port):
-    global s2
+def Tcp_server_connect(numofclientwait, port):
     s2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     print("Socket successfully created")
     s2.bind(("", port))
     print("socket binded to %s" % (port))
     s2.listen(numofclientwait)
     print("socket is listening")
+    return s2
 
 
-def Tcp_server_next():
-    global s
-    s = s2.accept()[0]
+def Tcp_client_connect(hostIp, port):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    print("Socket successfully created")
+    s.connect((hostIp, port))
+    print("Connecting to machine with ip: " + str(hostIp) + " and port: " + str(port))
+    return s
 
 
-def Tcp_Write(D):
+def Tcp_server_next(s2):
+    return s2.accept()[0]
+
+
+def Tcp_Write(s, D):
     s.send(D.encode())
     return
 
 
-def Tcp_Read():
+def Tcp_Read(s):
     result = ""
     while True:
         cnt = 0
@@ -37,16 +44,6 @@ def Tcp_Read():
     return result
 
 
-def Tcp_Close():
+def Tcp_Close(s):
     s.close()
     return
-
-
-def handleSender(port):
-    Tcp_server_wait(5, port)
-    Tcp_server_next()
-    print(Tcp_Read())
-    Tcp_Close()
-
-
-# handleSender()
