@@ -10,6 +10,7 @@ def main(caport, recordFile):
     print("\nEntered\n")
     print("Args: \ncaport: " + caport + " \nrecordFile: " + recordFile)
     K.generateRSAKey("CA")
+    S.handleSender(int(caport))
 
 
 # Starting position
