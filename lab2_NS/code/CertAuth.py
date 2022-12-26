@@ -2,15 +2,20 @@ import argparse
 from importlib.machinery import SourceFileLoader
 
 # imports the module from the given path
-S = SourceFileLoader("sender", "code/helper/sender.py").load_module()
-K = SourceFileLoader("keyGen", "code/helper/keyGen.py").load_module()
+conn = SourceFileLoader("socketConn", "code/helper/socketConn.py").load_module()
+keyGen = SourceFileLoader("keyGen", "code/helper/keyGen.py").load_module()
 
 # MAIN FUNCTION
 def main(caport, recordFile):
     print("\nEntered\n")
     print("Args: \ncaport: " + caport + " \nrecordFile: " + recordFile)
-    K.generateRSAKey("CA")
-    S.handleSender(int(caport))
+    keyGen.generateRSAKey("CA")
+    socket = conn.Tcp_server_connect(5, int(caport))
+    while True:
+        client = conn.Tcp_server_next(socket)
+        result = conn.Tcp_Read(client)
+        print(result[2:5])
+        conn.Tcp_Close(client)
 
 
 # Starting position
