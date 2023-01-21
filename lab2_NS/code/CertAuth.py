@@ -1,9 +1,55 @@
-import argparse
+import argparse, base64
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
 from importlib.machinery import SourceFileLoader
 
 # imports the module from the given path
 conn = SourceFileLoader("socketConn", "code/helper/socketConn.py").load_module()
 keyGen = SourceFileLoader("keyGen", "code/helper/keyGen.py").load_module()
+
+
+def separateResult(result):
+    results = []
+    result = result[3:]
+    pos = 0
+    while pos != -1:
+        pos = result.find("###")
+        results.append(result[1 : (pos - 1)])
+        result = result[(pos + 3) :]
+
+    return results[:-1]
+
+
+def prepareCert(req):
+    print(req)
+    res = "### 302 ###"
+
+    private_key = RSA.import_key(open("keys/CA/private.pem").read())
+    # Decrypt with the private RSA key
+    cipher_rsa = PKCS1_OAEP.new(private_key)
+
+    dec_name = req[2].encode("utf-8")
+    # OR dec_name = bytes(req[2], "UTF-8")
+
+    dec_name = base64.b64decode(dec_name)
+    dec_name = cipher_rsa.decrypt(dec_name).decode("utf-8")
+
+    print(dec_name)
+
+    # file_out = open("keys/" + name + "/public.pem", "r")
+    # req += file_out.read() + "\n"
+    # file_out.close()
+
+    # public_key = RSA.import_key(open("keys/CA/public.pem").read())
+    # # Encrypt with the public RSA key
+    # cipher_rsa = PKCS1_OAEP.new(public_key)
+    # enc_name = cipher_rsa.encrypt(name.encode("utf-8"))
+
+    # req += "### " + str(enc_name) + " ###\n"
+    # req += "*****"
+
+    return req
+
 
 # MAIN FUNCTION
 def main(caport, recordFile):
@@ -14,7 +60,9 @@ def main(caport, recordFile):
     while True:
         client = conn.Tcp_server_next(socket)
         result = conn.Tcp_Read(client)
-        print(result[2:5])
+        results = separateResult(result)
+        if results[0] == "301":
+            prepareCert(results)
         conn.Tcp_Close(client)
 
 

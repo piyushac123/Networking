@@ -1,4 +1,4 @@
-import argparse, json
+import argparse, json, base64
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
 
@@ -11,7 +11,7 @@ keyGen = SourceFileLoader("keyGen", "code/helper/keyGen.py").load_module()
 
 
 def prepareReqCert(name):
-    req = "| 301 |\n"
+    req = "### 301 ###\n"
 
     file_out = open("keys/" + name + "/public.pem", "r")
     req += file_out.read() + "\n"
@@ -19,16 +19,16 @@ def prepareReqCert(name):
 
     public_key = RSA.import_key(open("keys/CA/public.pem").read())
     # Encrypt with the public RSA key
+    # Useful page -
+    # https://stackoverflow.com/questions/62940069/python-rsa-encryption-with-pkcs1-oaep-pkcs1-v1-5-fails-to-decrypt-special-charac
+    # https://docs.python.org/3/library/base64.html
+
     cipher_rsa = PKCS1_OAEP.new(public_key)
     enc_name = cipher_rsa.encrypt(name.encode("utf-8"))
+    enc_name = base64.b64encode(enc_name)
 
-    req += "| " + str(enc_name) + " |\n"
+    req += "### " + str(enc_name, "UTF-8") + " ###\n"
     req += "*****"
-
-    # private_key = RSA.import_key(open("keys/CA/private.pem").read())
-    # # Decrypt with the private RSA key
-    # cipher_rsa = PKCS1_OAEP.new(private_key)
-    # dec_name = cipher_rsa.decrypt(enc_name).decode("utf-8")
 
     return req
 
