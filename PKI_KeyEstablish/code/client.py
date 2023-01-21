@@ -50,6 +50,7 @@ def main(args):
     # Certificate Authorization
     req = prepareReqCert(args["n"])
     socket = conn.Tcp_client_connect(args["a"], int(args["p"]))
+    print(socket)
     print(req)
     conn.Tcp_Write(socket, req)
     conn.Tcp_Close(socket)

@@ -1,6 +1,6 @@
 ### Network Security
 
-#### Assignment 2 - Lab2.pdf
+#### Assignment 2 - Lab2.pdf - PKI-based key establishment
 
 - Quick Run
 
