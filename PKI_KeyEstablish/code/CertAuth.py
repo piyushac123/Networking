@@ -1,6 +1,9 @@
-import argparse, base64
+import argparse, base64, datetime
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
+import Crypto.Random as rand
+from Crypto.Hash import SHA256
+from Crypto.Signature import pkcs1_15
 from importlib.machinery import SourceFileLoader
 
 # imports the module from the given path
@@ -20,9 +23,66 @@ def separateResult(result):
     return results[:-1]
 
 
-def prepareCert(req):
+def prepareCert(req, clientName):
+    # prepare certificate
+    res = "*** " + clientName + " *** "
+    res += str(base64.b64encode(rand.get_random_bytes(8)), "UTF-8") + " ***\n"
+
+    file_out = open("keys/" + clientName + "/public.pem", "r")
+    res += file_out.read() + "\n*** "
+    file_out.close()
+
+    date = datetime.datetime.now()
+    res += (
+        str(int(date.strftime("%Y")))
+        + "/"
+        + date.strftime("%m")
+        + "/"
+        + date.strftime("%d")
+        + " *** "
+    )
+    res += (
+        str(int(date.strftime("%Y")) + 1)
+        + "/"
+        + date.strftime("%m")
+        + "/"
+        + date.strftime("%d")
+        + " ***"
+    )
+
+    # Hash certificate
+    hash_cert = SHA256.new()
+    hash_cert.update(res.encode("utf-8"))
+
+    # # Digital signature for certificate - on hexdigest of hashed certificate
+    private_key = RSA.import_key(open("keys/CA/private.pem").read())
+    sign_cert = pkcs1_15.new(private_key).sign(hash_cert)
+    sign_cert = base64.b64encode(sign_cert)
+    sign_cert = str(sign_cert, "UTF-8")
+
+    # using 1/2 length strings due to 'ValueError: Plaintext is too long' of RSA encrypt
+    sign_cert_1 = sign_cert[: int(0.5 * len(sign_cert))]
+    sign_cert_2 = sign_cert[int(0.5 * len(sign_cert)) :]
+
+    # Encrypt certificate
+    public_key = RSA.import_key(open("keys/" + clientName + "/public.pem").read())
+    cipher_rsa = PKCS1_OAEP.new(public_key)
+    enc_cert_1 = cipher_rsa.encrypt(sign_cert_1.encode("utf-8"))
+    enc_cert_1 = base64.b64encode(enc_cert_1)
+    enc_cert_1 = str(enc_cert_1, "UTF-8")
+    # print(len(str(enc_cert_1, "UTF-8")))
+
+    enc_cert_2 = cipher_rsa.encrypt(sign_cert_2.encode("utf-8"))
+    enc_cert_2 = base64.b64encode(enc_cert_2)
+    enc_cert_2 = str(enc_cert_2, "UTF-8")
+    # print(len(str(enc_cert_2, "UTF-8")))
+
+    return enc_cert_1 + " " + enc_cert_2
+
+
+def prepareResponse(req):
     print(req)
-    res = "### 302 ###"
+    res = "### 302 ### "
 
     private_key = RSA.import_key(open("keys/CA/private.pem").read())
     # Decrypt with the private RSA key
@@ -34,21 +94,14 @@ def prepareCert(req):
     dec_name = base64.b64decode(dec_name)
     dec_name = cipher_rsa.decrypt(dec_name).decode("utf-8")
 
-    print(dec_name)
+    res += dec_name + " ###\n"
 
-    # file_out = open("keys/" + name + "/public.pem", "r")
-    # req += file_out.read() + "\n"
-    # file_out.close()
+    res += prepareCert(req, dec_name) + "\n###\n"
+    res += "*****"
 
-    # public_key = RSA.import_key(open("keys/CA/public.pem").read())
-    # # Encrypt with the public RSA key
-    # cipher_rsa = PKCS1_OAEP.new(public_key)
-    # enc_name = cipher_rsa.encrypt(name.encode("utf-8"))
+    print(res)
 
-    # req += "### " + str(enc_name) + " ###\n"
-    # req += "*****"
-
-    return req
+    return res
 
 
 # MAIN FUNCTION
@@ -59,10 +112,11 @@ def main(caport, recordFile):
     socket = conn.Tcp_server_connect(5, int(caport))
     while True:
         client = conn.Tcp_server_next(socket)
+        print(client)
         result = conn.Tcp_Read(client)
         results = separateResult(result)
         if results[0] == "301":
-            prepareCert(results)
+            res = prepareResponse(results)
         conn.Tcp_Close(client)
 
 
