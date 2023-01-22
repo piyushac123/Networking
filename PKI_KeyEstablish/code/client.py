@@ -1,4 +1,4 @@
-import argparse, json, base64
+import argparse, json, base64, os
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
 
@@ -10,6 +10,47 @@ conn = SourceFileLoader("socketConn", "code/helper/socketConn.py").load_module()
 keyGen = SourceFileLoader("keyGen", "code/helper/keyGen.py").load_module()
 
 
+def separateResult(result):
+    results = []
+    result = result[3:]
+    pos = 0
+    while pos != -1:
+        pos = result.find("###")
+        results.append(result[1 : (pos - 1)])
+        result = result[(pos + 3) :]
+
+    return results[:-1]
+
+
+def prepareAndStoreCert(results, clientName):
+    signed_cert = ""
+
+    # Decrypt certificate
+    private_key = RSA.import_key(
+        open("keys/" + clientName + "/private.pem", "rb").read()
+    )
+    cipher_rsa = PKCS1_OAEP.new(private_key)
+    for cipher in results[2].split(", "):
+        dec_cert = bytes(cipher, "UTF-8")
+        dec_cert = base64.b64decode(dec_cert)
+        dec_cert = cipher_rsa.decrypt(dec_cert).decode("utf-8")
+        signed_cert += dec_cert
+
+    signed_cert = bytes(signed_cert, "UTF-8")
+    signed_cert = base64.b64decode(signed_cert)
+
+    path = "keys/" + clientName
+    if not os.path.exists(path):
+        # Create a new directory because it does not exist
+        os.makedirs(path)
+
+    file_out = open(path + "/certificate.txt", "wb")
+    file_out.write(signed_cert)
+    file_out.close()
+
+    print("Certificate stored at " + path + "/certificate.txt")
+
+
 def prepareReqCert(name):
     req = "### 301 ###\n"
 
@@ -17,7 +58,7 @@ def prepareReqCert(name):
     req += file_out.read() + "\n"
     file_out.close()
 
-    public_key = RSA.import_key(open("keys/CA/public.pem").read())
+    public_key = RSA.import_key(open("keys/CA/public.pem", "rb").read())
     # Encrypt with the public RSA key
     # Useful page -
     # https://stackoverflow.com/questions/62940069/python-rsa-encryption-with-pkcs1-oaep-pkcs1-v1-5-fails-to-decrypt-special-charac
@@ -33,10 +74,6 @@ def prepareReqCert(name):
     return req
 
 
-# def clientToClientCommunication():
-#     print("clientToClientCommunication")
-
-
 # MAIN FUNCTION
 def main(args):
     print("\nEntered\n")
@@ -50,16 +87,13 @@ def main(args):
     # Certificate Authorization
     req = prepareReqCert(args["n"])
     socket = conn.Tcp_client_connect(args["a"], int(args["p"]))
-    print(socket)
-    print(req)
     conn.Tcp_Write(socket, req)
+    result = conn.Tcp_Read(socket)
+    print("Certificate Response:")
+    print(result)
+    results = separateResult(result)
+    prepareAndStoreCert(results, args["n"])
     conn.Tcp_Close(socket)
-
-    # file_out = open("keys/"+args["n"]+"/certificate", "wb")
-    # file_out.write(R.handleReceiver(args["a"], int(args["p"]), req))
-    # file_out.close()
-
-    # clientToClientCommunication()
 
 
 # Starting position

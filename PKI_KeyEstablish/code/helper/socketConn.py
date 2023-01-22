@@ -32,13 +32,17 @@ def Tcp_Write(s, D):
 
 def Tcp_Read(s):
     result = ""
+    flag = 0
     while True:
         cnt = 0
         while (tmp := s.recv(1).decode()) and (tmp == "*"):
             cnt += 1
             result += tmp
-        if cnt == 5:
-            result = result[:-5]
+            if cnt == 5:
+                result = result[:-5]
+                flag = 1
+                break
+        if flag == 1:
             break
         result += tmp
     return result

@@ -55,7 +55,7 @@ def prepareCert(req, clientName):
     hash_cert.update(res.encode("utf-8"))
 
     # # Digital signature for certificate - on hexdigest of hashed certificate
-    private_key = RSA.import_key(open("keys/CA/private.pem").read())
+    private_key = RSA.import_key(open("keys/CA/private.pem", "rb").read())
     sign_cert = pkcs1_15.new(private_key).sign(hash_cert)
     sign_cert = base64.b64encode(sign_cert)
     sign_cert = str(sign_cert, "UTF-8")
@@ -65,26 +65,23 @@ def prepareCert(req, clientName):
     sign_cert_2 = sign_cert[int(0.5 * len(sign_cert)) :]
 
     # Encrypt certificate
-    public_key = RSA.import_key(open("keys/" + clientName + "/public.pem").read())
+    public_key = RSA.import_key(open("keys/" + clientName + "/public.pem", "rb").read())
     cipher_rsa = PKCS1_OAEP.new(public_key)
     enc_cert_1 = cipher_rsa.encrypt(sign_cert_1.encode("utf-8"))
     enc_cert_1 = base64.b64encode(enc_cert_1)
     enc_cert_1 = str(enc_cert_1, "UTF-8")
-    # print(len(str(enc_cert_1, "UTF-8")))
 
     enc_cert_2 = cipher_rsa.encrypt(sign_cert_2.encode("utf-8"))
     enc_cert_2 = base64.b64encode(enc_cert_2)
     enc_cert_2 = str(enc_cert_2, "UTF-8")
-    # print(len(str(enc_cert_2, "UTF-8")))
 
-    return enc_cert_1 + " " + enc_cert_2
+    return enc_cert_1 + ", " + enc_cert_2
 
 
 def prepareResponse(req):
-    print(req)
     res = "### 302 ### "
 
-    private_key = RSA.import_key(open("keys/CA/private.pem").read())
+    private_key = RSA.import_key(open("keys/CA/private.pem", "rb").read())
     # Decrypt with the private RSA key
     cipher_rsa = PKCS1_OAEP.new(private_key)
 
@@ -99,8 +96,6 @@ def prepareResponse(req):
     res += prepareCert(req, dec_name) + "\n###\n"
     res += "*****"
 
-    print(res)
-
     return res
 
 
@@ -112,11 +107,13 @@ def main(caport, recordFile):
     socket = conn.Tcp_server_connect(5, int(caport))
     while True:
         client = conn.Tcp_server_next(socket)
-        print(client)
         result = conn.Tcp_Read(client)
+        print("Certificate Request:")
+        print(result)
         results = separateResult(result)
         if results[0] == "301":
             res = prepareResponse(results)
+            conn.Tcp_Write(client, res)
         conn.Tcp_Close(client)
 
 
