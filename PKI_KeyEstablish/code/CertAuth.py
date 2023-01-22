@@ -107,12 +107,16 @@ def main(caport, recordFile):
     socket = conn.Tcp_server_connect(5, int(caport))
     while True:
         client = conn.Tcp_server_next(socket)
+
+        # Get request for certificate
         result = conn.Tcp_Read(client)
         print("Certificate Request:")
         print(result)
         results = separateResult(result)
         if results[0] == "301":
             res = prepareResponse(results)
+
+            # Send requested certificate
             conn.Tcp_Write(client, res)
         conn.Tcp_Close(client)
 

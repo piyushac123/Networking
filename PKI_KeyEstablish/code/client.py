@@ -1,6 +1,7 @@
-import argparse, json, base64, os
+import argparse, json, base64, os, time
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
+from Crypto.Signature import pkcs1_15
 
 # https://www.geeksforgeeks.org/how-to-import-a-python-module-given-the-full-path/
 from importlib.machinery import SourceFileLoader
@@ -74,6 +75,23 @@ def prepareReqCert(name):
     return req
 
 
+def prepare502Message(name):
+    res = "### 502 ### " + name + " ###\n"
+
+    file_out = open("keys/" + name + "/certificate.txt", "rb")
+    signed_cert = file_out.read()
+    file_out.close()
+
+    print(signed_cert)
+
+    signed_cert = base64.b64encode(signed_cert)
+    signed_cert = str(signed_cert, "UTF-8")
+
+    res += signed_cert + "\n### *****"
+
+    return res
+
+
 # MAIN FUNCTION
 def main(args):
     print("\nEntered\n")
@@ -87,13 +105,73 @@ def main(args):
     # Certificate Authorization
     req = prepareReqCert(args["n"])
     socket = conn.Tcp_client_connect(args["a"], int(args["p"]))
+
+    # Request certificate
     conn.Tcp_Write(socket, req)
+
+    # Receive certificate
     result = conn.Tcp_Read(socket)
     print("Certificate Response:")
     print(result)
     results = separateResult(result)
     prepareAndStoreCert(results, args["n"])
     conn.Tcp_Close(socket)
+
+    # Client to Client Communication
+    if args["m"] == "R":
+        time.sleep(15)
+        socket = conn.Tcp_client_connect(args["d"], int(args["q"]))
+
+        # Request for Sender's certificate - 501
+        req = "### 501 ### " + args["n"] + " ### *****"
+        conn.Tcp_Write(socket, req)
+
+        # Receive certificate
+        result = conn.Tcp_Read(socket)
+        print("Sender's Certificate Response:")
+        print(result)
+        results = separateResult(result)
+
+        # if results[0] == "502":
+        # Verify authenticity of certificate - by digital signature of CA
+        # verifyCert()
+        # public_key = RSA.import_key(open("keys/CA/public.pem", "rb").read())
+        # cipher_rsa = PKCS1_OAEP.new(public_key)
+
+        # signed_cert = bytes(results[2], "UTF-8")
+        # signed_cert = base64.b64decode(signed_cert)
+
+        # hash_cert = cipher_rsa.decrypt(signed_cert).decode("utf-8")
+
+        # try:
+        #     pkcs1_15.new(public_key).verify(hash_cert, signed_cert)
+        #     print("The signature is valid.")
+        # except (ValueError, TypeError):
+        #     print("The signature is not valid.")
+
+        # Generate session key - using AES
+        # Request for file from Sender using session key - 503
+        # Receive file
+        # Store encrypted and decrypted file
+
+    elif args["m"] == "S":
+        socket = conn.Tcp_server_connect(5, int(args["q"]))
+        client = conn.Tcp_server_next(socket)
+
+        # Get request for certificate
+        result = conn.Tcp_Read(client)
+        print("My Certificate Request:")
+        print(result)
+        results = separateResult(result)
+
+        if results[0] == "501":
+            res = prepare502Message(args["n"])
+
+            # Send requested certificate - 502
+            conn.Tcp_Write(client, res)
+
+            # Get request for file
+            # Send encrypted requested file - 504
 
 
 # Starting position
