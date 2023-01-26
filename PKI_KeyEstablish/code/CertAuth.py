@@ -3,7 +3,8 @@ from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
 import Crypto.Random as rand
 from Crypto.Hash import SHA256
-from Crypto.Signature import pkcs1_15
+
+# from Crypto.Signature import pkcs1_15
 from importlib.machinery import SourceFileLoader
 
 # imports the module from the given path
@@ -53,29 +54,79 @@ def prepareCert(req, clientName):
     # Hash certificate
     hash_cert = SHA256.new()
     hash_cert.update(res.encode("utf-8"))
+    # using hexdigest of hashed certificate
+    res += ", " + hash_cert.hexdigest()
 
-    # # Digital signature for certificate - on hexdigest of hashed certificate
+    if len(res) > 190:
+        cnt = 190
+    else:
+        cnt = len(res)
+    n = 0
+
     private_key = RSA.import_key(open("keys/CA/private.pem", "rb").read())
-    sign_cert = pkcs1_15.new(private_key).sign(hash_cert)
+    cipher_rsa_pri = PKCS1_OAEP.new(private_key)
+
+    public_key = RSA.import_key(open("keys/" + clientName + "/public.pem", "rb").read())
+    cipher_rsa_pub = PKCS1_OAEP.new(public_key)
+
+    result = ""
+
+    # using splitted strings due to 'ValueError: Plaintext is too long' of RSA encrypt
+    # Message can be of variable length, but not longer than the RSA modulus (in bytes) minus 2, minus twice the hash output size.
+    # For instance, if you use RSA 2048 and SHA-256, the longest message you can encrypt is 190 byte long.
+    # sign_cert_1 = sign_cert[: int(0.5 * len(sign_cert))]
+    while (len(res) - n * cnt) >= 190:
+        data_and_hash_cert = res[int(n * cnt) : int((n + 1) * cnt)]
+
+        # Digital signature for certificate
+        sign_cert = cipher_rsa_pri.encrypt((data_and_hash_cert).encode("utf-8"))
+        sign_cert = base64.b64encode(sign_cert)
+        sign_cert = str(sign_cert, "UTF-8")
+        # print(n)
+        # print(sign_cert)
+        # Reached right here
+
+        # Encrypt certificate
+        # using 1/2 length strings due to 'ValueError: Plaintext is too long' of RSA encrypt
+        sign_cert_1 = sign_cert[: int(0.5 * len(sign_cert))]
+        sign_cert_2 = sign_cert[int(0.5 * len(sign_cert)) :]
+
+        enc_cert_1 = cipher_rsa_pub.encrypt(sign_cert_1.encode("utf-8"))
+        enc_cert_1 = base64.b64encode(enc_cert_1)
+        enc_cert_1 = str(enc_cert_1, "UTF-8")
+
+        enc_cert_2 = cipher_rsa_pub.encrypt(sign_cert_2.encode("utf-8"))
+        enc_cert_2 = base64.b64encode(enc_cert_2)
+        enc_cert_2 = str(enc_cert_2, "UTF-8")
+
+        result += enc_cert_1 + "; " + enc_cert_2 + ", "
+        n += 1
+
+    data_and_hash_cert = res[int(n * cnt) : int(len(res))]
+
+    # Digital signature for certificate
+    sign_cert = cipher_rsa_pri.encrypt((data_and_hash_cert).encode("utf-8"))
     sign_cert = base64.b64encode(sign_cert)
     sign_cert = str(sign_cert, "UTF-8")
+    print(sign_cert)
 
+    # Encrypt certificate
     # using 1/2 length strings due to 'ValueError: Plaintext is too long' of RSA encrypt
     sign_cert_1 = sign_cert[: int(0.5 * len(sign_cert))]
     sign_cert_2 = sign_cert[int(0.5 * len(sign_cert)) :]
 
-    # Encrypt certificate
-    public_key = RSA.import_key(open("keys/" + clientName + "/public.pem", "rb").read())
-    cipher_rsa = PKCS1_OAEP.new(public_key)
-    enc_cert_1 = cipher_rsa.encrypt(sign_cert_1.encode("utf-8"))
+    enc_cert_1 = cipher_rsa_pub.encrypt(sign_cert_1.encode("utf-8"))
     enc_cert_1 = base64.b64encode(enc_cert_1)
     enc_cert_1 = str(enc_cert_1, "UTF-8")
 
-    enc_cert_2 = cipher_rsa.encrypt(sign_cert_2.encode("utf-8"))
+    enc_cert_2 = cipher_rsa_pub.encrypt(sign_cert_2.encode("utf-8"))
     enc_cert_2 = base64.b64encode(enc_cert_2)
     enc_cert_2 = str(enc_cert_2, "UTF-8")
 
-    return enc_cert_1 + ", " + enc_cert_2
+    result += enc_cert_1 + "; " + enc_cert_2
+    print(result)
+
+    return result
 
 
 def prepareResponse(req):
