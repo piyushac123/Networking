@@ -71,6 +71,12 @@ case $choice in
     20)
         python code/cryptoAlgo.py -p dec -a aes -m cbc -k 256 -i 'testcases_output/10K/enc_aes_cbc_256_test_10K_1.txt' -o 'testcases/10K'
         ;;
+    21)
+        python code/bulkResult.py
+        ;;
+    22)
+        rm records.txt records.csv
+        ;;
 esac
 
 # python code/cryptoAlgo.py -p enc -a 3des -m ecb -k 192 -i 'testcases/10K/test_10K_1.txt' -o 'testcases_output/10K'

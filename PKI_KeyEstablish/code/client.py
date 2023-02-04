@@ -64,6 +64,8 @@ def prepareAndStoreCert(results, clientName):
     #     dec_sign_cert = cipher_rsa_pub.decrypt(dec_sign_cert).decode("utf-8")
     #     signed_cert += dec_sign_cert
 
+    print(signed_cert)
+
     path = "keys/" + clientName
     if not os.path.exists(path):
         # Create a new directory because it does not exist

@@ -79,6 +79,8 @@ def prepareCert(req, clientName):
         data_and_hash_cert = res[int(n * cnt) : int((n + 1) * cnt)]
 
         # Digital signature for certificate
+        # It is not possible to encrypt with a private key by definition.
+        # https://stackoverflow.com/questions/60284761/python-rsa-key-recieved-the-key-but-getting-error-this-is-not-a-private-key
         sign_cert = cipher_rsa_pri.encrypt((data_and_hash_cert).encode("utf-8"))
         sign_cert = base64.b64encode(sign_cert)
         sign_cert = str(sign_cert, "UTF-8")
