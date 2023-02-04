@@ -51,10 +51,14 @@
     - Receiver receives and decrypt content
 
 - Request and response formats
+
   - Client's request for certificate - `| 301 | ClientPublicKey | ClientNameEnc |`
-  - CA's response for certificate request - `| 302 | ClientName | E_PU_A [ E_PR_CA [ Hash( CERTDATA ) ] ]`
+  - CA's response for certificate request - `| 302 | ClientName | E_PU_A [ E_PR_CA [ CERTDATA + Hash( CERTDATA ) ] ]`
   - CERTDATA - `ClientName || Nonce || ClientPublicKey || StartDate || EndDate`
   - Receiver(R) requests Sender(S) certificate - `| 501 | ReceiverName |`
   - S repond R with certificate - `| 502 | SenderName | SenderCertificate |`
   - R requests S file(send session key) - `| 503 | EncSessionKey | FileName |`
   - S respond R with file - `| 504 | FileName | EncFileContent |`
+
+- Useful links
+  - https://medium.com/@srikanth-grandhi/implementing-asymmetric-encryption-to-secure-your-project-35368049cb5f

@@ -1,6 +1,7 @@
 import argparse, os, base64, time
 from Crypto import Random
 from Crypto.Cipher import DES, DES3, AES
+import csv
 
 # https://stackoverflow.com/questions/12524994/encrypt-decrypt-using-pycrypto-aes-256
 
@@ -83,37 +84,42 @@ def getCipher(oper, algo, mode, passphrase, indata):
     return cipher, iv, block_size, indata
 
 
-def getPassPhrase(keysize):
+def getPassPhrase(keysize, ky):
     passLen = int(int(keysize) / 8)
-    print("\nEnter passphrase of " + str(passLen) + " characters : ")
-    while passphrase := input():
-        if len(passphrase) >= passLen:
-            break
-        print("\nInvalid passphrase")
+
+    if ky == "":
         print("\nEnter passphrase of " + str(passLen) + " characters : ")
+        while passphrase := input():
+            if len(passphrase) >= passLen:
+                break
+            print("\nInvalid passphrase")
+            print("\nEnter passphrase of " + str(passLen) + " characters : ")
+    else:
+        passphrase = ky
+
     return passphrase[:passLen]
 
 
 # MAIN FUNCTION
-def main(oper, algo, mode, keysize, infile, outpath):
-    print("\nEntered\n")
-    print(
-        "Args: \noper: "
-        + oper
-        + " \nalgo: "
-        + algo
-        + " \nmode: "
-        + mode
-        + " \nkeysize: "
-        + keysize
-        + " \ninfile: "
-        + infile
-        + " \noutpath: "
-        + outpath
-    )
+def main(oper, algo, mode, keysize, infile, outpath, ky):
+    # print("\nEntered\n")
+    # print(
+    #     "Args: \noper: "
+    #     + oper
+    #     + " \nalgo: "
+    #     + algo
+    #     + " \nmode: "
+    #     + mode
+    #     + " \nkeysize: "
+    #     + keysize
+    #     + " \ninfile: "
+    #     + infile
+    #     + " \noutpath: "
+    #     + outpath
+    # )
 
     # Get passphrase from user
-    passphrase = getPassPhrase(keysize)
+    passphrase = getPassPhrase(keysize, ky)
 
     # Get input file data
     file = open(infile)
@@ -132,22 +138,35 @@ def main(oper, algo, mode, keysize, infile, outpath):
 
     input_file = infile[(infile.find("/", infile.find("/") + 1) + 1) :]
 
+    if not os.path.exists("records.csv"):
+        header = ["operation", "algorithm", "mode", "keysize", "file", "exec_time"]
+
+        with open("records.csv", "w", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerow(header)
+
     file = open("records.txt", "a")
     file.write(
         oper
-        + "_"
+        + "-"
         + algo
-        + "_"
+        + "-"
         + mode
-        + "_"
+        + "-"
         + keysize
-        + "_"
+        + "-"
         + input_file
         + "\t"
         + str(exec_time)
         + "\n"
     )
     file.close()
+
+    data = [oper, algo, mode, keysize, input_file, exec_time]
+
+    with open("records.csv", "a", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(data)
 
     # Creating a file
     # Put data in output file - can use file name as oper_algo_mode_keysize_infile
@@ -180,6 +199,7 @@ if __name__ == "__main__":
     4. keysize - keysizes in bits for des(64), 3des(192) or aes(128, 192, 256)
     5. infile - input file to be encrypted or decrypted
     6. outpath - output file path
+    7. key - key for algorithm
     """
     parser = argparse.ArgumentParser(
         description="Cryptographic Encryption-Decryption Analysis"
@@ -240,51 +260,46 @@ if __name__ == "__main__":
         required=False,
         default="../testcases_output/10K",
     )
+    parser.add_argument(
+        "-y",
+        "--key",
+        help="key for algorithm",
+        type=str,
+        action="store",
+        required=False,
+        default="",
+    )
 
     args = parser.parse_args()
 
     if not args.oper:
         parser.print_help()
-        print(
-            "\nOperations not found: %s\n"
-            % args.oper
-        )
+        print("\nOperations not found: %s\n" % args.oper)
         parser.exit(1)
     if not args.algo:
         parser.print_help()
-        print(
-            "\nAlgorithm not found: %s\n"
-            % args.algo
-        )
+        print("\nAlgorithm not found: %s\n" % args.algo)
         parser.exit(1)
     if not args.mode:
         parser.print_help()
-        print(
-            "\nMode not found: %s\n"
-            % args.mode
-        )
+        print("\nMode not found: %s\n" % args.mode)
         parser.exit(1)
     if not args.keysize:
         parser.print_help()
-        print(
-            "\nKey size not found: %s\n"
-            % args.keysize
-        )
+        print("\nKey size not found: %s\n" % args.keysize)
         parser.exit(1)
     if not os.path.exists(args.infile):
         parser.print_help()
-        print(
-            "\nInput file not found: %s\n"
-            % args.infile
-        )
+        print("\nInput file not found: %s\n" % args.infile)
         parser.exit(1)
     if not args.outpath:
         parser.print_help()
-        print(
-            "\nOutput file path not found: %s\n"
-            % args.outpath
-        )
+        print("\nOutput file path not found: %s\n" % args.outpath)
         parser.exit(1)
+    if not args.key:
+        ky = ""
+    else:
+        ky = args.key
 
     # Pass argument into main function
-    main(args.oper, args.algo, args.mode, args.keysize, args.infile, args.outpath)
+    main(args.oper, args.algo, args.mode, args.keysize, args.infile, args.outpath, ky)
