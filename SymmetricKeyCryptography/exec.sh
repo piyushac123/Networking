@@ -75,7 +75,7 @@ case $choice in
         python code/bulkResult.py
         ;;
     22)
-        rm records.txt records.csv
+        rm -R testcases_output/demo records.txt records.csv
         ;;
 esac
 
