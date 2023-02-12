@@ -34,37 +34,26 @@ def prepareAndStoreCert(results, clientName):
 
     cnt = 0
     for cipher in results[2].split(", "):
-        cipher = cipher.split("; ")
-        # print(cnt)
-        cnt += 1
-        # print(cipher[0])
-        # print(cipher[1])
+        if cipher != "":
+            dec_cert = bytes(cipher, "UTF-8")
+            dec_cert = base64.b64decode(dec_cert)
+            dec_cert = cipher_rsa.decrypt(dec_cert).decode("utf-8")
 
-        dec_cert_1 = bytes(cipher[0], "UTF-8")
-        dec_cert_1 = base64.b64decode(dec_cert_1)
-        dec_cert_1 = cipher_rsa.decrypt(dec_cert_1).decode("utf-8")
+            signed_cert += dec_cert
 
-        dec_cert_2 = bytes(cipher[1], "UTF-8")
-        dec_cert_2 = base64.b64decode(dec_cert_2)
-        dec_cert_2 = cipher_rsa.decrypt(dec_cert_2).decode("utf-8")
-
-        signed_cert += dec_cert_1 + dec_cert_2 + ", "
-
-    # digital certificate in string form, each 190 bytes separated by ', '
-    signed_cert = signed_cert[:-2]
-    # print(signed_cert)
+    print("signed_cert")
+    print(signed_cert)
 
     # decrypt by CA's public key - verify digital signature
-    # public_key = RSA.import_key(open("keys/CA/public.pem", "rb").read())
-    # cipher_rsa_pub = PKCS1_OAEP.new(public_key)
-
-    # for ds in signed_cert.split(", "):
-    #     dec_sign_cert = bytes(ds, "UTF-8")
-    #     dec_sign_cert = base64.b64decode(dec_sign_cert)
-    #     dec_sign_cert = cipher_rsa_pub.decrypt(dec_sign_cert).decode("utf-8")
-    #     signed_cert += dec_sign_cert
-
-    print(signed_cert)
+    public_key = json.load(open("keys/CA/public.json", "r"))
+    dec_cert = pow(int(signed_cert), public_key["e"], public_key["n"])
+    dec_cert = dec_cert.to_bytes(dec_cert.bit_length(), byteorder="big")
+    # dec_cert = base64.b64encode(dec_cert)
+    # print("*****************")
+    # print(dec_cert)
+    dec_cert = str(dec_cert, "UTF-8")
+    print("dec_cert")
+    print(dec_cert)
 
     path = "keys/" + clientName
     if not os.path.exists(path):
@@ -126,7 +115,7 @@ def main(args):
         print(val + ": " + args[val])
 
     # Key generation
-    keyGen.generateRSAKey(args["n"])
+    keyGen.generateRSAKey(args["n"], "n")
 
     # Certificate Authorization
     req = prepareReqCert(args["n"])
