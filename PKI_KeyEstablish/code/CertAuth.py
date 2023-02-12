@@ -1,4 +1,4 @@
-import argparse, base64, datetime
+import argparse, base64, datetime, json
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
 import Crypto.Random as rand
@@ -54,8 +54,12 @@ def prepareCert(req, clientName):
     # Hash certificate
     hash_cert = SHA256.new()
     hash_cert.update(res.encode("utf-8"))
+    # print(hash_cert)
+
     # using hexdigest of hashed certificate
     res += ", " + hash_cert.hexdigest()
+    print("res")
+    print(res)
 
     if len(res) > 190:
         cnt = 190
@@ -63,11 +67,25 @@ def prepareCert(req, clientName):
         cnt = len(res)
     n = 0
 
-    private_key = RSA.import_key(open("keys/CA/private.pem", "rb").read())
-    cipher_rsa_pri = PKCS1_OAEP.new(private_key)
+    private_key = json.load(open("keys/CA/private.json", "r"))
 
     public_key = RSA.import_key(open("keys/" + clientName + "/public.pem", "rb").read())
     cipher_rsa_pub = PKCS1_OAEP.new(public_key)
+
+    # Digital signature for certificate
+    # It is not possible to encrypt with a private key by definition.
+    # https://stackoverflow.com/questions/60284761/python-rsa-key-recieved-the-key-but-getting-error-this-is-not-a-private-key
+    # Digital signature by formula encryption using private key
+    # https://cryptobook.nakov.com/digital-signatures/rsa-sign-verify-examples
+    res = bytes(res, "UTF-8")
+    # print("*****************")
+    # print(res)
+    # res = base64.b64decode(res)
+    res = int.from_bytes(res, byteorder="big")
+    sign_cert = pow(res, private_key["d"], private_key["n"])
+    sign_cert = str(sign_cert)
+    print("sign_cert")
+    print(sign_cert)
 
     result = ""
 
@@ -75,57 +93,30 @@ def prepareCert(req, clientName):
     # Message can be of variable length, but not longer than the RSA modulus (in bytes) minus 2, minus twice the hash output size.
     # For instance, if you use RSA 2048 and SHA-256, the longest message you can encrypt is 190 byte long.
     # sign_cert_1 = sign_cert[: int(0.5 * len(sign_cert))]
-    while (len(res) - n * cnt) >= 190:
-        data_and_hash_cert = res[int(n * cnt) : int((n + 1) * cnt)]
+    print(len(sign_cert))
+    while (len(sign_cert) - (n * cnt)) > 0:
+        sign_cert_tmp = sign_cert[int(n * cnt) : int((n + 1) * cnt)]
 
-        # Digital signature for certificate
-        # It is not possible to encrypt with a private key by definition.
-        # https://stackoverflow.com/questions/60284761/python-rsa-key-recieved-the-key-but-getting-error-this-is-not-a-private-key
-        sign_cert = cipher_rsa_pri.encrypt((data_and_hash_cert).encode("utf-8"))
-        sign_cert = base64.b64encode(sign_cert)
-        sign_cert = str(sign_cert, "UTF-8")
-        # print(n)
-        # print(sign_cert)
-        # Reached right here
+        # Encrypt digitally signed certificate
+        enc_cert = cipher_rsa_pub.encrypt(sign_cert_tmp.encode("utf-8"))
+        enc_cert = base64.b64encode(enc_cert)
+        enc_cert = str(enc_cert, "UTF-8")
 
-        # Encrypt certificate
-        # using 1/2 length strings due to 'ValueError: Plaintext is too long' of RSA encrypt
-        sign_cert_1 = sign_cert[: int(0.5 * len(sign_cert))]
-        sign_cert_2 = sign_cert[int(0.5 * len(sign_cert)) :]
-
-        enc_cert_1 = cipher_rsa_pub.encrypt(sign_cert_1.encode("utf-8"))
-        enc_cert_1 = base64.b64encode(enc_cert_1)
-        enc_cert_1 = str(enc_cert_1, "UTF-8")
-
-        enc_cert_2 = cipher_rsa_pub.encrypt(sign_cert_2.encode("utf-8"))
-        enc_cert_2 = base64.b64encode(enc_cert_2)
-        enc_cert_2 = str(enc_cert_2, "UTF-8")
-
-        result += enc_cert_1 + "; " + enc_cert_2 + ", "
+        result += enc_cert + ", "
         n += 1
 
-    data_and_hash_cert = res[int(n * cnt) : int(len(res))]
+    # if len(sign_cert) - (n * cnt) > 0:
+    #     sign_cert_tmp = sign_cert[int(n * cnt) : int(len(sign_cert))]
 
-    # Digital signature for certificate
-    sign_cert = cipher_rsa_pri.encrypt((data_and_hash_cert).encode("utf-8"))
-    sign_cert = base64.b64encode(sign_cert)
-    sign_cert = str(sign_cert, "UTF-8")
-    print(sign_cert)
+    #     # Encrypt digitally signed certificate
+    #     enc_cert = cipher_rsa_pub.encrypt(sign_cert_tmp.encode("utf-8"))
+    #     enc_cert = base64.b64encode(enc_cert)
+    #     enc_cert = str(enc_cert, "UTF-8")
 
-    # Encrypt certificate
-    # using 1/2 length strings due to 'ValueError: Plaintext is too long' of RSA encrypt
-    sign_cert_1 = sign_cert[: int(0.5 * len(sign_cert))]
-    sign_cert_2 = sign_cert[int(0.5 * len(sign_cert)) :]
-
-    enc_cert_1 = cipher_rsa_pub.encrypt(sign_cert_1.encode("utf-8"))
-    enc_cert_1 = base64.b64encode(enc_cert_1)
-    enc_cert_1 = str(enc_cert_1, "UTF-8")
-
-    enc_cert_2 = cipher_rsa_pub.encrypt(sign_cert_2.encode("utf-8"))
-    enc_cert_2 = base64.b64encode(enc_cert_2)
-    enc_cert_2 = str(enc_cert_2, "UTF-8")
-
-    result += enc_cert_1 + "; " + enc_cert_2
+    #     result += enc_cert
+    # else:
+    #     result = result[:-2]
+    print("result")
     print(result)
 
     return result
@@ -156,7 +147,7 @@ def prepareResponse(req):
 def main(caport, recordFile):
     print("\nEntered\n")
     print("Args: \ncaport: " + caport + " \nrecordFile: " + recordFile)
-    keyGen.generateRSAKey("CA")
+    keyGen.generateRSAKey("CA", "y")
     socket = conn.Tcp_server_connect(5, int(caport))
     while True:
         client = conn.Tcp_server_next(socket)
