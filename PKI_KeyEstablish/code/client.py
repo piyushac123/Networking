@@ -1,6 +1,7 @@
 import argparse, json, base64, os, time
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
+from Crypto.Hash import SHA256
 from Crypto.Signature import pkcs1_15
 
 # https://www.geeksforgeeks.org/how-to-import-a-python-module-given-the-full-path/
@@ -32,6 +33,8 @@ def prepareAndStoreCert(results, clientName):
     )
     cipher_rsa = PKCS1_OAEP.new(private_key)
 
+    public_key = RSA.import_key(open("keys/CA/public.pem", "rb").read())
+
     cnt = 0
     for cipher in results[2].split(", "):
         if cipher != "":
@@ -41,19 +44,19 @@ def prepareAndStoreCert(results, clientName):
 
             signed_cert += dec_cert
 
-    print("signed_cert")
-    print(signed_cert)
-
     # decrypt by CA's public key - verify digital signature
-    public_key = json.load(open("keys/CA/public.json", "r"))
-    dec_cert = pow(int(signed_cert), public_key["e"], public_key["n"])
-    dec_cert = dec_cert.to_bytes(dec_cert.bit_length(), byteorder="big")
-    # dec_cert = base64.b64encode(dec_cert)
-    # print("*****************")
-    # print(dec_cert)
-    dec_cert = str(dec_cert, "UTF-8")
-    print("dec_cert")
-    print(dec_cert)
+    cert = signed_cert.split(", ")
+
+    # Hash certificate
+    hash_cert = SHA256.new(str(cert[0]).encode("utf-8"))
+
+    cert_signed = bytes(cert[1], "UTF-8")
+    cert_signed = base64.b64decode(cert_signed)
+    try:
+        pkcs1_15.new(public_key).verify(hash_cert, cert_signed)
+        print("The signature is valid.")
+    except (ValueError, TypeError):
+        print("The signature is not valid.")
 
     path = "keys/" + clientName
     if not os.path.exists(path):
@@ -129,7 +132,8 @@ def main(args):
     print("Certificate Response:")
     print(result)
     results = separateResult(result)
-    prepareAndStoreCert(results, args["n"])
+    if results[0] == "302":
+        prepareAndStoreCert(results, args["n"])
     conn.Tcp_Close(socket)
 
     # Client to Client Communication

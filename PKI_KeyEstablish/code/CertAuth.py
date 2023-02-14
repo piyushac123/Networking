@@ -3,6 +3,7 @@ from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
 import Crypto.Random as rand
 from Crypto.Hash import SHA256
+from Crypto.Signature import pkcs1_15
 
 # from Crypto.Signature import pkcs1_15
 from importlib.machinery import SourceFileLoader
@@ -52,14 +53,7 @@ def prepareCert(req, clientName):
     )
 
     # Hash certificate
-    hash_cert = SHA256.new()
-    hash_cert.update(res.encode("utf-8"))
-    # print(hash_cert)
-
-    # using hexdigest of hashed certificate
-    res += ", " + hash_cert.hexdigest()
-    print("res")
-    print(res)
+    hash_cert = SHA256.new(res.encode("utf-8"))
 
     if len(res) > 190:
         cnt = 190
@@ -67,7 +61,7 @@ def prepareCert(req, clientName):
         cnt = len(res)
     n = 0
 
-    private_key = json.load(open("keys/CA/private.json", "r"))
+    private_key = RSA.import_key(open("keys/CA/private.pem", "rb").read())
 
     public_key = RSA.import_key(open("keys/" + clientName + "/public.pem", "rb").read())
     cipher_rsa_pub = PKCS1_OAEP.new(public_key)
@@ -77,15 +71,11 @@ def prepareCert(req, clientName):
     # https://stackoverflow.com/questions/60284761/python-rsa-key-recieved-the-key-but-getting-error-this-is-not-a-private-key
     # Digital signature by formula encryption using private key
     # https://cryptobook.nakov.com/digital-signatures/rsa-sign-verify-examples
-    res = bytes(res, "UTF-8")
-    # print("*****************")
-    # print(res)
-    # res = base64.b64decode(res)
-    res = int.from_bytes(res, byteorder="big")
-    sign_cert = pow(res, private_key["d"], private_key["n"])
-    sign_cert = str(sign_cert)
-    print("sign_cert")
-    print(sign_cert)
+    sign_cert = pkcs1_15.new(private_key).sign(hash_cert)
+    sign_cert = base64.b64encode(sign_cert)
+    sign_cert = str(sign_cert, "UTF-8")
+
+    res += ", " + sign_cert
 
     result = ""
 
@@ -93,12 +83,11 @@ def prepareCert(req, clientName):
     # Message can be of variable length, but not longer than the RSA modulus (in bytes) minus 2, minus twice the hash output size.
     # For instance, if you use RSA 2048 and SHA-256, the longest message you can encrypt is 190 byte long.
     # sign_cert_1 = sign_cert[: int(0.5 * len(sign_cert))]
-    print(len(sign_cert))
-    while (len(sign_cert) - (n * cnt)) > 0:
-        sign_cert_tmp = sign_cert[int(n * cnt) : int((n + 1) * cnt)]
+    while (len(res) - (n * cnt)) > 0:
+        tmp = res[int(n * cnt) : int((n + 1) * cnt)]
 
         # Encrypt digitally signed certificate
-        enc_cert = cipher_rsa_pub.encrypt(sign_cert_tmp.encode("utf-8"))
+        enc_cert = cipher_rsa_pub.encrypt(tmp.encode("utf-8"))
         enc_cert = base64.b64encode(enc_cert)
         enc_cert = str(enc_cert, "UTF-8")
 
@@ -116,8 +105,6 @@ def prepareCert(req, clientName):
     #     result += enc_cert
     # else:
     #     result = result[:-2]
-    print("result")
-    print(result)
 
     return result
 
