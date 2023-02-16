@@ -24,18 +24,31 @@ def separateResult(result):
     return results[:-1]
 
 
+def verifyCert(signed_cert):
+    public_key = RSA.import_key(open("keys/CA/public.pem", "rb").read())
+    cert = signed_cert.split(", ")
+
+    # Hash certificate
+    hash_cert = SHA256.new(cert[0].encode("utf-8"))
+
+    cert_signed = bytes(cert[1], "UTF-8")
+    cert_signed = base64.b64decode(cert_signed)
+    try:
+        # verify digital signature by CA's public key
+        pkcs1_15.new(public_key).verify(hash_cert, cert_signed)
+        print("The signature is valid.")
+    except (ValueError, TypeError):
+        print("The signature is not valid.")
+
+
 def prepareAndStoreCert(results, clientName):
     signed_cert = ""
-
-    # Decrypt certificate
     private_key = RSA.import_key(
         open("keys/" + clientName + "/private.pem", "rb").read()
     )
     cipher_rsa = PKCS1_OAEP.new(private_key)
 
-    public_key = RSA.import_key(open("keys/CA/public.pem", "rb").read())
-
-    cnt = 0
+    # Decrypt certificate
     for cipher in results[2].split(", "):
         if cipher != "":
             dec_cert = bytes(cipher, "UTF-8")
@@ -44,19 +57,7 @@ def prepareAndStoreCert(results, clientName):
 
             signed_cert += dec_cert
 
-    # decrypt by CA's public key - verify digital signature
-    cert = signed_cert.split(", ")
-
-    # Hash certificate
-    hash_cert = SHA256.new(str(cert[0]).encode("utf-8"))
-
-    cert_signed = bytes(cert[1], "UTF-8")
-    cert_signed = base64.b64decode(cert_signed)
-    try:
-        pkcs1_15.new(public_key).verify(hash_cert, cert_signed)
-        print("The signature is valid.")
-    except (ValueError, TypeError):
-        print("The signature is not valid.")
+    verifyCert(signed_cert)
 
     path = "keys/" + clientName
     if not os.path.exists(path):
@@ -96,14 +97,9 @@ def prepareReqCert(name):
 def prepare502Message(name):
     res = "### 502 ### " + name + " ###\n"
 
-    file_out = open("keys/" + name + "/certificate.txt", "rb")
+    file_out = open("keys/" + name + "/certificate.txt", "r")
     signed_cert = file_out.read()
     file_out.close()
-
-    print(signed_cert)
-
-    signed_cert = base64.b64encode(signed_cert)
-    signed_cert = str(signed_cert, "UTF-8")
 
     res += signed_cert + "\n### *****"
 
@@ -151,27 +147,15 @@ def main(args):
         print(result)
         results = separateResult(result)
 
-        # if results[0] == "502":
         # Verify authenticity of certificate - by digital signature of CA
-        # verifyCert()
-        # public_key = RSA.import_key(open("keys/CA/public.pem", "rb").read())
-        # cipher_rsa = PKCS1_OAEP.new(public_key)
+        if results[0] == "502":
+            verifyCert(results[2])
 
-        # signed_cert = bytes(results[2], "UTF-8")
-        # signed_cert = base64.b64decode(signed_cert)
+            # Generate session key - using AES
 
-        # hash_cert = cipher_rsa.decrypt(signed_cert).decode("utf-8")
-
-        # try:
-        #     pkcs1_15.new(public_key).verify(hash_cert, signed_cert)
-        #     print("The signature is valid.")
-        # except (ValueError, TypeError):
-        #     print("The signature is not valid.")
-
-        # Generate session key - using AES
-        # Request for file from Sender using session key - 503
-        # Receive file
-        # Store encrypted and decrypted file
+            # Request for file from Sender using session key - 503
+            # Receive file
+            # Store encrypted and decrypted file
 
     elif args["m"] == "S":
         socket = conn.Tcp_server_connect(5, int(args["q"]))

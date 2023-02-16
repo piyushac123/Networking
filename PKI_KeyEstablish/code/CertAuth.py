@@ -82,7 +82,6 @@ def prepareCert(req, clientName):
     # using splitted strings due to 'ValueError: Plaintext is too long' of RSA encrypt
     # Message can be of variable length, but not longer than the RSA modulus (in bytes) minus 2, minus twice the hash output size.
     # For instance, if you use RSA 2048 and SHA-256, the longest message you can encrypt is 190 byte long.
-    # sign_cert_1 = sign_cert[: int(0.5 * len(sign_cert))]
     while (len(res) - (n * cnt)) > 0:
         tmp = res[int(n * cnt) : int((n + 1) * cnt)]
 
@@ -93,18 +92,6 @@ def prepareCert(req, clientName):
 
         result += enc_cert + ", "
         n += 1
-
-    # if len(sign_cert) - (n * cnt) > 0:
-    #     sign_cert_tmp = sign_cert[int(n * cnt) : int(len(sign_cert))]
-
-    #     # Encrypt digitally signed certificate
-    #     enc_cert = cipher_rsa_pub.encrypt(sign_cert_tmp.encode("utf-8"))
-    #     enc_cert = base64.b64encode(enc_cert)
-    #     enc_cert = str(enc_cert, "UTF-8")
-
-    #     result += enc_cert
-    # else:
-    #     result = result[:-2]
 
     return result
 
