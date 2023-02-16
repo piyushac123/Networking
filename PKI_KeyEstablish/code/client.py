@@ -1,4 +1,6 @@
 import argparse, json, base64, os, time
+from Crypto import Random
+from Crypto.Cipher import AES
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.Hash import SHA256
@@ -22,6 +24,86 @@ def separateResult(result):
         result = result[(pos + 3) :]
 
     return results[:-1]
+
+
+def generateIV(block_size):
+    return Random.new().read(block_size)
+
+
+def getCipher(passphrase):
+    # Convert string to bytes
+    key = passphrase.encode("utf-8")
+
+    block_size = AES.block_size
+    iv = generateIV(block_size)
+
+    # Will be using AES algorithm in CBC mode with key size 128B
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+
+    return cipher, iv
+
+
+def encryptData(cipher, iv, indata):
+    # Convert string to bytes
+    plaintext = indata.encode("utf-8")
+
+    # To binary data
+    ciphertext = base64.b64encode(iv + cipher.encrypt(plaintext))
+    ciphertext = str(ciphertext, "UTF-8")
+
+    return ciphertext
+
+
+def prepare504Message(sender, passphrase, infile):
+    res = "### 504 ### " + infile + " ###\n"
+
+    private_key = RSA.import_key(open("keys/" + sender + "/private.pem", "rb").read())
+    cipher_rsa = PKCS1_OAEP.new(private_key)
+
+    passphrase = bytes(passphrase, "UTF-8")
+    passphrase = base64.b64decode(passphrase)
+    passphrase = cipher_rsa.decrypt(passphrase).decode("utf-8")
+
+    # Cipher for given session key - using AES
+    cipher, iv = getCipher(passphrase)
+
+    file_out = open(infile, "r")
+    indata = file_out.read()
+    file_out.close()
+
+    # Encrypt file content using provided session key
+    enc_data = encryptData(cipher, iv, indata)
+
+    res += enc_data + "\n### *****"
+
+    return res
+
+
+def prepare503Message(sender, passphrase, infile):
+    res = "### 503 ###\n"
+
+    public_key = RSA.import_key(open("keys/" + sender + "/public.pem", "rb").read())
+    cipher_rsa = PKCS1_OAEP.new(public_key)
+
+    enc_cipher = cipher_rsa.encrypt(passphrase.encode("utf-8"))
+    enc_cipher = base64.b64encode(enc_cipher)
+    enc_cipher = str(enc_cipher, "UTF-8")
+
+    res += enc_cipher + "\n### " + infile + "\n### *****"
+
+    return res
+
+
+def prepare502Message(name):
+    res = "### 502 ### " + name + " ###\n"
+
+    file_out = open("keys/" + name + "/certificate.txt", "r")
+    signed_cert = file_out.read()
+    file_out.close()
+
+    res += signed_cert + "\n### *****"
+
+    return res
 
 
 def verifyCert(signed_cert):
@@ -94,18 +176,6 @@ def prepareReqCert(name):
     return req
 
 
-def prepare502Message(name):
-    res = "### 502 ### " + name + " ###\n"
-
-    file_out = open("keys/" + name + "/certificate.txt", "r")
-    signed_cert = file_out.read()
-    file_out.close()
-
-    res += signed_cert + "\n### *****"
-
-    return res
-
-
 # MAIN FUNCTION
 def main(args):
     print("\nEntered\n")
@@ -151,10 +221,15 @@ def main(args):
         if results[0] == "502":
             verifyCert(results[2])
 
-            # Generate session key - using AES
-
             # Request for file from Sender using session key - 503
+            req = prepare503Message(results[1], args["y"], args["i"])
+            conn.Tcp_Write(socket, req)
+
             # Receive file
+            result = conn.Tcp_Read(socket)
+            print("Sender's File Request Response:")
+            print(result)
+            results = separateResult(result)
             # Store encrypted and decrypted file
 
     elif args["m"] == "S":
@@ -174,7 +249,17 @@ def main(args):
             conn.Tcp_Write(client, res)
 
             # Get request for file
+            result = conn.Tcp_Read(client)
+            print("Sender's File Response:")
+            print(result)
+            results = separateResult(result)
+
             # Send encrypted requested file - 504
+            if results[0] == "503":
+                res = prepare504Message(args["n"], results[1], results[2])
+
+                # Send requested file data - 504
+                conn.Tcp_Write(client, res)
 
 
 # Starting position
@@ -191,6 +276,7 @@ if __name__ == "__main__":
     - o : file to store decrypted content received
     - a : CA's IP
     - p : CA's Port
+    - y : Passphrase
     """
     parser = argparse.ArgumentParser(description="Client-side implementation")
 
@@ -267,6 +353,14 @@ if __name__ == "__main__":
         required=False,
         default="output_dec.txt",
     )
+    parser.add_argument(
+        "-y",
+        help="passphrase",
+        type=str,
+        action="store",
+        required=False,
+        default="",
+    )
 
     args = parser.parse_args()
 
@@ -306,6 +400,10 @@ if __name__ == "__main__":
         if not args.o:
             parser.print_help()
             print("\Received content decrypted file name not found: %s\n" % args.o)
+            parser.exit(1)
+        if not args.y:
+            parser.print_help()
+            print("\Passphrase not found: %s\n" % args.y)
             parser.exit(1)
 
     # Pass argument into main function
