@@ -60,5 +60,13 @@
   - R requests S file(send session key) - `| 503 | EncSessionKey | FileName |`
   - S respond R with file - `| 504 | FileName | EncFileContent |`
 
+- Demo Execution
+  CA
+  ![CA side execution](https://github.com/piyushac123/Networking/blob/main/PKI_KeyEstablish/image/CA.png?raw=true)
+  File Content Sender
+  ![File Content Sender side execution](https://github.com/piyushac123/Networking/blob/main/PKI_KeyEstablish/image/sender.png?raw=true)
+  File Content Receiver
+  ![File Content Receiver side execution](https://github.com/piyushac123/Networking/blob/main/PKI_KeyEstablish/image/receiver.png?raw=true)
+
 - Useful links
   - https://medium.com/@srikanth-grandhi/implementing-asymmetric-encryption-to-secure-your-project-35368049cb5f

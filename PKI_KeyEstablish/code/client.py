@@ -30,7 +30,7 @@ def generateIV(block_size):
     return Random.new().read(block_size)
 
 
-def getCipher(passphrase):
+def generateCipher(passphrase):
     # Convert string to bytes
     key = passphrase.encode("utf-8")
 
@@ -43,15 +43,47 @@ def getCipher(passphrase):
     return cipher, iv
 
 
+def getCipher(passphrase, iv):
+    # Convert string to bytes
+    key = passphrase.encode("utf-8")
+
+    # Will be using AES algorithm in CBC mode with key size 128B
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+
+    return cipher
+
+
 def encryptData(cipher, iv, indata):
     # Convert string to bytes
     plaintext = indata.encode("utf-8")
 
     # To binary data
+    # Working for 10KB, but not for 1KB
     ciphertext = base64.b64encode(iv + cipher.encrypt(plaintext))
     ciphertext = str(ciphertext, "UTF-8")
 
     return ciphertext
+
+
+def decryptData(cipher, block_size, indata):
+    plaintext = cipher.decrypt(indata)
+
+    # Convert bytes to string
+    result = plaintext.decode("utf-8")
+    return result
+
+
+def decrypt504Message(passphrase, indata):
+    ciphertext = bytes(indata, "UTF-8")
+    ciphertext = base64.b64decode(ciphertext)
+
+    block_size = AES.block_size
+    iv = ciphertext[:block_size]
+
+    cipher = getCipher(passphrase, iv)
+    indata = decryptData(cipher, block_size, ciphertext[block_size:])
+
+    return indata
 
 
 def prepare504Message(sender, passphrase, infile):
@@ -65,7 +97,7 @@ def prepare504Message(sender, passphrase, infile):
     passphrase = cipher_rsa.decrypt(passphrase).decode("utf-8")
 
     # Cipher for given session key - using AES
-    cipher, iv = getCipher(passphrase)
+    cipher, iv = generateCipher(passphrase)
 
     file_out = open(infile, "r")
     indata = file_out.read()
@@ -192,10 +224,11 @@ def main(args):
 
     # Request certificate
     conn.Tcp_Write(socket, req)
+    print("Sent Request for Certificate to CA")
 
     # Receive certificate
     result = conn.Tcp_Read(socket)
-    print("Certificate Response:")
+    print("Received Certificate in Response from CA")
     print(result)
     results = separateResult(result)
     if results[0] == "302":
@@ -210,11 +243,11 @@ def main(args):
         # Request for Sender's certificate - 501
         req = "### 501 ### " + args["n"] + " ### *****"
         conn.Tcp_Write(socket, req)
+        print("Sent Request for Certificate of Sender")
 
         # Receive certificate
         result = conn.Tcp_Read(socket)
-        print("Sender's Certificate Response:")
-        print(result)
+        print("Received Sender's Certificate in Response")
         results = separateResult(result)
 
         # Verify authenticity of certificate - by digital signature of CA
@@ -223,14 +256,33 @@ def main(args):
 
             # Request for file from Sender using session key - 503
             req = prepare503Message(results[1], args["y"], args["i"])
+            time.sleep(1)
             conn.Tcp_Write(socket, req)
+            print("Sent Request for File Content from Sender")
 
             # Receive file
             result = conn.Tcp_Read(socket)
-            print("Sender's File Request Response:")
-            print(result)
+            print("Received File Content in Response")
             results = separateResult(result)
+
             # Store encrypted and decrypted file
+            if results[0] == "504":
+                file_out = open(args["s"], "w")
+                file_out.write(results[2])
+                file_out.close()
+
+                outdata = decrypt504Message(args["y"], results[2])
+
+                file_out = open(args["o"], "w")
+                file_out.write(outdata)
+                file_out.close()
+
+                print(
+                    "Stored Encrypted File Content in - "
+                    + args["s"]
+                    + " -  and Decrypted File Content in - "
+                    + args["o"]
+                )
 
     elif args["m"] == "S":
         socket = conn.Tcp_server_connect(5, int(args["q"]))
@@ -238,28 +290,29 @@ def main(args):
 
         # Get request for certificate
         result = conn.Tcp_Read(client)
-        print("My Certificate Request:")
-        print(result)
+        print("Received My Certificate Request")
         results = separateResult(result)
 
         if results[0] == "501":
             res = prepare502Message(args["n"])
 
             # Send requested certificate - 502
+            time.sleep(1)
             conn.Tcp_Write(client, res)
+            print("Sent Requested Certificate")
 
             # Get request for file
             result = conn.Tcp_Read(client)
-            print("Sender's File Response:")
-            print(result)
             results = separateResult(result)
+            print("Received Sender's File Content Request for File - " + results[2])
 
             # Send encrypted requested file - 504
             if results[0] == "503":
                 res = prepare504Message(args["n"], results[1], results[2])
-
                 # Send requested file data - 504
+                time.sleep(1)
                 conn.Tcp_Write(client, res)
+                print("Sent Requested File Content")
 
 
 # Starting position
